@@ -14,7 +14,8 @@ from ultralytics.yolo.engine.predictor import BasePredictor
 from ultralytics.yolo.utils import DEFAULT_CONFIG, ROOT, ops
 from ultralytics.yolo.utils.checks import check_imgsz
 from ultralytics.yolo.utils.plotting import Annotator, colors, save_one_box
-
+# from ultralytics.solutions import speed_estimation
+# from ultralytics.yolo.v8.detect.deep_sort_pytorch.deep_sort.sort.track import Track
 import cv2
 from deep_sort_pytorch.utils.parser import get_config
 from deep_sort_pytorch.deep_sort import DeepSort
@@ -149,7 +150,19 @@ def draw_boxes(img, bbox, names,object_id, identities=None, offset=(0, 0)):
           data_deque[id] = deque(maxlen= 64)
         color = compute_color_for_labels(object_id[i])
         obj_name = names[object_id[i]]
-        label = '{}{:d}'.format("", id) + ":"+ '%s' % (obj_name)
+        prev_box = bbox[i - 1]
+        prev_x, prev_y, prev_x2, prev_y2 = prev_box
+        prev_center = (int((prev_x + prev_x2) / 2), int((prev_y + prev_y2) / 2))
+        curr_center = (int((x1 + x2) / 2), int((y1 + y2) / 2))
+        distance = np.sqrt((curr_center[0] - prev_center[0])**2 + (curr_center[1] - prev_center[1])**2)
+        fps = 30  # assume 30 FPS
+        speed = distance / (1 / fps)
+
+        if obj_name == "car":
+            speed_km = speed / 1000  # convert speed from meters per second to kilometers per second
+            label = '{}{:d}'.format("", id) + ":"+ '%s' % (obj_name) + f" {speed_km:.2f} km/s"
+        else:
+            label = '{}{:d}'.format("", id) + ":"+ '%s' % (obj_name)
 
         # add center to buffer
         data_deque[id].appendleft(center)
